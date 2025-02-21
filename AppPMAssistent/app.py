@@ -1,4 +1,20 @@
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify
+import os
+
+app = Flask(__name__)
+
+@app.route("/AppPMAssistent")
+def home():
+    return jsonify({"mensagem": "Assistente PM rodando com sucesso!"})
+
+@app.route("/AppPMAssistent/assistente", methods=["POST"])
+def assistente():
+    return jsonify({"resposta": "Envie uma mensagem para interagir."})
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))  # Render.com define automaticamente a porta
+    app.run(host="0.0.0.0", port=port, debug=True)
+
 import openai
 import pandas as pd
 
