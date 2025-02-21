@@ -1,27 +1,13 @@
-from flask import Flask, jsonify
+from flask import Flask, request, jsonify
 import os
+import openai
+import pandas as pd
 
 app = Flask(__name__)
 
 @app.route("/")
 def home():
     return jsonify({"mensagem": "Assistente PM rodando com sucesso!"})
-
-@app.route("/assistente", methods=["POST"])
-def assistente():
-    return jsonify({"resposta": "Envie uma mensagem para interagir."})
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))  # Render.com define automaticamente a porta
-    app.run(host="0.0.0.0", port=port, debug=True)
-
-import openai
-import pandas as pd
-
-app = Flask(__name__)
-
-# Configurar API da OpenAI (ou outro modelo de IA)
-openai.api_key = "SUA_CHAVE_OPENAI"
 
 # Base de conhecimento para fluxos
 knowledge_base = {
@@ -35,16 +21,35 @@ knowledge_base = {
 
 @app.route("/assistente", methods=["POST"])
 def assistente():
-    data = request.json
-    user_message = data.get("mensagem", "").lower()
-    response = knowledge_base.get("fluxo generico", "🤖 Não encontrei um fluxo específico. Pode detalhar melhor sua necessidade?")
+    try:
+        data = request.get_json()
+        if not data or "mensagem" not in data or "api_key" not in data:
+            return jsonify({"erro": "Campos 'mensagem' e 'api_key' são obrigatórios"}), 400
+        
+        openai.api_key = data["api_key"]  # Define a API Key vinda no JSON
+        user_message = data["mensagem"].lower()
+        
+        # Verificar se a mensagem corresponde a um fluxo predefinido
+        response = knowledge_base.get("fluxo generico", "🤖 Não encontrei um fluxo específico. Pode detalhar melhor sua necessidade?")
+        
+        for key in knowledge_base:
+            if key in user_message:
+                response = knowledge_base[key]
+                break
+        
+        # Se nenhuma resposta predefinida for encontrada, chama o GPT-4
+        if response == "🤖 Não encontrei um fluxo específico. Pode detalhar melhor sua necessidade?":
+            resposta_gpt = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": user_message}]
+            )
+            response = resposta_gpt["choices"][0]["message"]["content"]
+        
+        return jsonify({"resposta": response})
     
-    for key in knowledge_base:
-        if key in user_message:
-            response = knowledge_base[key]
-            break
-    
-    return jsonify({"resposta": response})
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 10000))  # Render define automaticamente a porta
+    app.run(host="0.0.0.0", port=port, debug=True)
