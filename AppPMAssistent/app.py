@@ -3,11 +3,11 @@ import os
 
 app = Flask(__name__)
 
-@app.route("/AppPMAssistent")
+@app.route("/")
 def home():
     return jsonify({"mensagem": "Assistente PM rodando com sucesso!"})
 
-@app.route("/AppPMAssistent/assistente", methods=["POST"])
+@app.route("/assistente", methods=["POST"])
 def assistente():
     return jsonify({"resposta": "Envie uma mensagem para interagir."})
 
